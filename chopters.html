@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CHOPERTS | Personalized Aesthetics</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,400&family=Montserrat:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #FAF9F6; /* Alabaster */
+            --text-main: #1A1A1A;
+            --text-muted: #666666;
+            --accent: #C48A7E; /* Muted Clay */
+            --accent-hover: #A86E63;
+            --card-bg: #FFFFFF;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Montserrat', sans-serif;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        h1, h2, h3, .serif {
+            font-family: 'Cormorant Garmond', serif;
+        }
+
+        /* Animations */
+        .fade-in {
+            animation: fadeIn 0.8s ease-out forwards;
+            opacity: 0;
+        }
+
+        .slide-up {
+            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        .delay-100 { animation-delay: 0.1s; }
+        .delay-200 { animation-delay: 0.2s; }
+        .delay-300 { animation-delay: 0.3s; }
+        .delay-500 { animation-delay: 0.5s; }
+
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Custom Checkbox/Radio Styling */
+        .option-card {
+            transition: all 0.3s ease;
+            border: 1px solid transparent;
+        }
+        .option-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px -10px rgba(0,0,0,0.05);
+        }
+        .option-card.selected {
+            border-color: var(--accent);
+            background-color: #fff5f3;
+        }
+
+        /* Loader */
+        .pulse-ring {
+            display: inline-block;
+            width: 64px;
+            height: 64px;
+        }
+        .pulse-ring:after {
+            content: " ";
+            display: block;
+            width: 46px;
+            height: 46px;
+            margin: 1px;
+            border-radius: 50%;
+            border: 2px solid var(--accent);
+            border-color: var(--accent) transparent var(--accent) transparent;
+            animation: ring 1.2s linear infinite;
+        }
+        @keyframes ring {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* AI Output Styling */
+        .ai-content ul {
+            list-style-type: none;
+            margin-left: 0;
+            margin-top: 1rem;
+        }
+        .ai-content li {
+            margin-bottom: 0.75rem;
+            padding-left: 1.5rem;
+            position: relative;
+            font-weight: 300;
+            color: #4a4a4a;
+        }
+        .ai-content li::before {
+            content: "•";
+            color: var(--accent);
+            position: absolute;
+            left: 0;
+            font-size: 1.2em;
+        }
+        .ai-content strong {
+            color: var(--text-main);
+            font-weight: 500;
+            font-family: 'Cormorant Garmond', serif;
+            font-size: 1.1em;
+        }
+
+        /* 3D Canvas Container */
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -10;
+            overflow: hidden;
+            transition: opacity 0.5s ease;
+        }
+        #canvas-container canvas {
+            width: 100% !important;
+            height: 100% !important;
+            display: block; 
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-stone-200 selection:text-black">
+
+    <!-- Navigation -->
+    <nav class="w-full py-6 px-6 md:px-8 flex justify-between items-center fixed top-0 z-50 bg-white/80 backdrop-blur-sm md:bg-transparent md:backdrop-blur-none transition-all duration-300">
+        <div class="text-xl md:text-2xl tracking-widest font-semibold serif z-50 relative">CHOPERTS</div>
+        
+        <!-- Desktop Menu -->
+        <div class="hidden md:flex space-x-8 text-sm tracking-wide text-gray-500">
+            <a href="#" class="hover:text-black transition">Philosophy</a>
+            <a href="#" class="hover:text-black transition">Ingredients</a>
+            <a href="#" class="hover:text-black transition">Journal</a>
+        </div>
+        <button class="hidden md:block text-sm border-b border-black pb-0.5 hover:border-gray-400 transition">Log In</button>
+
+        <!-- Mobile Menu Button -->
+        <button onclick="toggleMobileMenu()" class="md:hidden z-50 p-2 focus:outline-none">
+            <div class="w-6 h-0.5 bg-black mb-1.5 transition-all" id="burger-1"></div>
+            <div class="w-6 h-0.5 bg-black transition-all" id="burger-2"></div>
+        </button>
+    </nav>
+
+    <!-- Mobile Menu Overlay -->
+    <div id="mobile-menu" class="fixed inset-0 bg-[#FAF9F6] z-40 flex flex-col justify-center items-center opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="flex flex-col space-y-8 text-center text-2xl serif">
+            <a href="#" onclick="toggleMobileMenu()" class="hover:text-[#C48A7E] transition">Philosophy</a>
+            <a href="#" onclick="toggleMobileMenu()" class="hover:text-[#C48A7E] transition">Ingredients</a>
+            <a href="#" onclick="toggleMobileMenu()" class="hover:text-[#C48A7E] transition">Journal</a>
+            <a href="#" onclick="toggleMobileMenu()" class="hover:text-[#C48A7E] transition pt-8 text-lg font-sans tracking-widest uppercase">Log In</a>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <main id="app" class="flex-grow flex flex-col justify-center items-center w-full px-4 md:px-8 pt-24 pb-10 relative">
+        
+        <!-- 3D Background -->
+        <div id="canvas-container" class="opacity-70"></div>
+
+        <!-- VIEW: LANDING -->
+        <section id="view-landing" class="max-w-xl md:max-w-2xl text-center space-y-6 md:space-y-8 px-2">
+            <p class="text-[10px] md:text-xs font-bold tracking-[0.2em] text-gray-400 uppercase slide-up">The Algorithm of Beauty</p>
+            <h1 class="text-4xl md:text-7xl leading-[1.1] serif font-light slide-up delay-100">
+                Curated science <br> for your unique biology.
+            </h1>
+            <p class="text-gray-600 text-lg font-light max-w-md mx-auto leading-relaxed slide-up delay-200">
+                CHOPERTS combines dermatological data with your lifestyle to engineer a 3-step regimen for skin, hair, and body.
+            </p>
+            <div class="pt-8 slide-up delay-300">
+                <button onclick="startQuiz()" class="bg-[#1a1a1a] text-white px-10 py-4 text-sm tracking-widest hover:bg-[#333] transition duration-300 ease-out">
+                    BEGIN ANALYSIS
+                </button>
+            </div>
+        </section>
+
+        <!-- VIEW: QUIZ -->
+        <section id="view-quiz" class="hidden w-full max-w-3xl">
+            <div class="w-full flex justify-between items-center mb-12 px-4">
+                <span class="text-xs tracking-widest text-gray-400">ANALYSIS IN PROGRESS</span>
+                <span id="progress-text" class="text-xs font-mono">01 / 04</span>
+            </div>
+
+            <div id="question-container" class="min-h-[400px] flex flex-col justify-center">
+                <!-- Questions injected via JS -->
+            </div>
+
+            <div class="flex justify-center mt-12 opacity-0 transition-opacity duration-300" id="next-btn-container">
+                <button onclick="nextQuestion()" class="border border-gray-300 px-8 py-3 text-xs tracking-widest hover:border-black hover:bg-black hover:text-white transition duration-300">
+                    CONTINUE
+                </button>
+            </div>
+        </section>
+
+        <!-- VIEW: LOADING -->
+        <section id="view-loading" class="hidden text-center">
+            <div class="pulse-ring mb-8"></div>
+            <h2 class="text-2xl serif mb-2">Connecting to Sephora</h2>
+            <p id="loading-text" class="text-gray-500 font-light text-sm tracking-wide">Accessing global inventory...</p>
+        </section>
+
+        <!-- VIEW: RESULTS -->
+        <section id="view-results" class="hidden w-full max-w-5xl px-2 md:px-4">
+            <div class="text-center mb-12 md:mb-16 slide-up">
+                <p class="text-xs font-bold tracking-[0.2em] text-[#C48A7E] uppercase mb-4">Curated Collection</p>
+                <h2 class="text-3xl md:text-5xl serif mb-4 md:mb-6">The Essential Trinity</h2>
+                <p class="text-gray-600 font-light max-w-lg mx-auto text-sm md:text-base">
+                    Based on your profile, we've retrieved these top-rated formulations available at Sephora to restore balance and vitality.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 mb-12 md:mb-16" id="results-grid">
+                <!-- Result Cards injected JS -->
+            </div>
+
+            <!-- GEMINI FEATURE 1: RITUAL GENERATOR -->
+            <div class="bg-white p-8 md:p-12 max-w-3xl mx-auto mb-16 rounded-sm shadow-sm border border-gray-100 slide-up delay-200">
+                <div class="text-center mb-8">
+                    <h3 class="text-2xl serif mb-2">Your Personalized Ritual</h3>
+                    <p class="text-sm text-gray-500 font-light">Generate a bespoke schedule using these products ✨</p>
+                </div>
+                
+                <div id="ritual-content" class="hidden ai-content text-left mb-8 p-6 bg-stone-50 rounded-sm">
+                    <!-- AI Content goes here -->
+                </div>
+
+                <div class="text-center">
+                    <button id="btn-generate-ritual" onclick="generateRitual()" class="bg-stone-100 hover:bg-stone-200 text-stone-800 px-8 py-3 text-xs tracking-widest transition duration-300 flex items-center justify-center mx-auto gap-2">
+                        <span>✨ DESIGN MY AM/PM RITUAL</span>
+                        <div id="ritual-loader" class="hidden w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                    </button>
+                </div>
+            </div>
+
+            <div class="text-center slide-up delay-500 border-t border-gray-200 pt-8 md:pt-12">
+                <p class="serif text-2xl mb-6" id="total-value">Calculating Total...</p>
+                <button class="bg-[#C48A7E] text-white px-12 py-4 text-sm tracking-widest hover:bg-[#A86E63] transition duration-300 shadow-xl shadow-orange-100">
+                    CHECKOUT VIA SEPHORA
+                </button>
+                <p class="mt-4 text-xs text-gray-400 cursor-pointer hover:text-black transition" onclick="location.reload()">Retake Analysis</p>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="w-full py-8 text-center text-[10px] tracking-widest text-gray-400 uppercase relative z-10">
+        &copy; 2025 CHOPERTS Laboratories. Paris • New York • Tokyo
+    </footer>
+
+    <script>
+        // --- 3D VISUALS (THREE.JS) ---
+        let scene, camera, renderer, shape;
+        let mouseX = 0, mouseY = 0;
+        let targetRotationX = 0, targetRotationY = 0;
+        const autoRotationSpeed = 0.0005;
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            if (!container) return;
+
+            scene = new THREE.Scene();
+            
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 25; 
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio); 
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
+            directionalLight.position.set(5, 10, 7);
+            scene.add(directionalLight);
+
+            const geometry = new THREE.IcosahedronGeometry(10, 1); 
+
+            const material = new THREE.MeshPhongMaterial({ 
+                color: 0xcacaca, 
+                specular: 0x999999, 
+                shininess: 30, 
+                flatShading: false 
+            });
+
+            shape = new THREE.Mesh(geometry, material);
+            shape.rotation.y = Math.PI / 4; 
+            shape.position.y = -4; 
+            scene.add(shape);
+
+            const windowHalfX = window.innerWidth / 2;
+            const windowHalfY = window.innerHeight / 2;
+
+            document.addEventListener('mousemove', (event) => {
+                mouseX = (event.clientX - windowHalfX);
+                mouseY = (event.clientY - windowHalfY);
+            });
+
+            const animate = () => {
+                requestAnimationFrame(animate);
+
+                targetRotationX = mouseX * 0.0001; 
+                targetRotationY = mouseY * 0.0001;
+
+                shape.rotation.y += autoRotationSpeed;
+                shape.rotation.y += 0.05 * (targetRotationX - (shape.rotation.y - autoRotationSpeed));
+                shape.rotation.x += 0.05 * (targetRotationY - shape.rotation.x);
+
+                renderer.render(scene, camera); 
+            };
+
+            animate();
+
+            window.addEventListener('resize', () => {
+                const width = window.innerWidth;
+                const height = window.innerHeight;
+
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+                renderer.setSize(width, height);
+            });
+        }
+        
+        window.addEventListener('load', init3D);
+
+        // --- API CONFIGURATION ---
+        const apiKey = ""; // Runtime environment provides this
+
+        async function callGeminiAPI(promptText) {
+            if (!apiKey) {
+                console.warn("API Key missing - using fallback");
+                return null;
+            }
+
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            
+            const payload = {
+                contents: [{
+                    parts: [{ text: promptText }]
+                }]
+            };
+
+            const delays = [1000, 2000, 4000, 8000, 16000];
+            for (let i = 0; i <= delays.length; i++) {
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        if (response.status === 429 && i < delays.length) {
+                                await new Promise(r => setTimeout(r, delays[i]));
+                                continue;
+                        }
+                        throw new Error(`API Error: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    return data;
+                } catch (error) {
+                    if (i === delays.length) throw error;
+                }
+            }
+            return null;
+        }
+
+        // --- DATA & STATE ---
+        const state = {
+            currentStep: 0,
+            answers: {},
+            views: ['landing', 'quiz', 'loading', 'results'],
+            generatedRitual: null,
+            fetchedProducts: {} // Store the AI generated products here
+        };
+
+        const questions = [
+            {
+                id: 'skin',
+                category: 'SKIN',
+                question: "How does your skin behave by midday?",
+                options: [
+                    { label: "Visible Shine", value: "oily", desc: "Pores appear enlarged, makeup slides." },
+                    { label: "Tight & Dry", value: "dry", desc: "Flaking patches, feels rough to touch." },
+                    { label: "Unpredictable", value: "combo", desc: "Oily T-zone, dry cheeks." },
+                    { label: "Balanced", value: "normal", desc: "Neither too oily nor too dry." }
+                ]
+            },
+            {
+                id: 'hair',
+                category: 'HAIR',
+                question: "What is your primary hair concern?",
+                options: [
+                    { label: "Lack of Volume", value: "flat", desc: "Hair feels heavy and lifeless." },
+                    { label: "Frizz & Dryness", value: "frizzy", desc: "Hard to manage, reacts to humidity." },
+                    { label: "Breakage", value: "damaged", desc: "Split ends from heat or color." },
+                    { label: "Scalp Health", value: "scalp", desc: "Itchiness or buildup issues." }
+                ]
+            },
+            {
+                id: 'body',
+                category: 'BODY',
+                question: "Your ideal body care result?",
+                options: [
+                    { label: "Deep Hydration", value: "dry_body", desc: "For scaly, thirsty skin." },
+                    { label: "Firming & Tone", value: "firming", desc: "Improve elasticity and texture." },
+                    { label: "Glow & Radiance", value: "dull", desc: "Brighten tone and exfoliate." }
+                ]
+            },
+            {
+                id: 'lifestyle',
+                category: 'LIFESTYLE',
+                question: "Describe your daily rhythm.",
+                options: [
+                    { label: "Always Running", value: "busy", desc: "I need quick, effective solutions." },
+                    { label: "Mindful Rituals", value: "ritual", desc: "I take time for self-care." },
+                    { label: "Urban Dweller", value: "urban", desc: "Exposed to city pollution." }
+                ]
+            }
+        ];
+
+        // Fallback database if AI fails
+        const fallbackProducts = {
+            skin: {
+                oily: { name: "Niacinamide 10% + Zinc 1%", brand: "The Ordinary", type: "Serum", price: 6.00 },
+                dry: { name: "Lala Retro Whipped Cream", brand: "Drunk Elephant", type: "Moisturizer", price: 64.00 },
+                combo: { name: "Protini Polypeptide Cream", brand: "Drunk Elephant", type: "Moisturizer", price: 68.00 },
+                normal: { name: "Hyaluronic Acid 2% + B5", brand: "The Ordinary", type: "Hydrator", price: 8.90 }
+            },
+            hair: {
+                flat: { name: "No. 4D Clean Volume Detox Dry Shampoo", brand: "Olaplex", type: "Volumizer", price: 30.00 },
+                frizzy: { name: "Honey Infused Hair Oil", brand: "Gisou", type: "Hair Oil", price: 87.00 },
+                damaged: { name: "No. 3 Hair Perfector", brand: "Olaplex", type: "Treatment", price: 30.00 },
+                scalp: { name: "T.L.C. Happi Scalp Scrub", brand: "Drunk Elephant", type: "Scrub", price: 38.00 }
+            },
+            body: {
+                dry_body: { name: "Brazilian Bum Bum Cream", brand: "Sol de Janeiro", type: "Cream", price: 48.00 },
+                firming: { name: "Beija Flor Elasti-Cream", brand: "Sol de Janeiro", type: "Cream", price: 48.00 },
+                dull: { name: "Bom Dia Bright Cream with Vitamin C", brand: "Sol de Janeiro", type: "Cream", price: 48.00 }
+            }
+        };
+
+        // --- CORE FUNCTIONS ---
+
+        function switchView(viewId) {
+            state.views.forEach(v => {
+                const el = document.getElementById(`view-${v}`);
+                if (v === viewId) {
+                    el.classList.remove('hidden');
+                    void el.offsetWidth; 
+                    if(viewId === 'quiz') renderQuestion();
+                } else {
+                    el.classList.add('hidden');
+                }
+            });
+            
+            const canvasContainer = document.getElementById('canvas-container');
+            if(canvasContainer) {
+                if(viewId === 'landing') {
+                    canvasContainer.style.opacity = '0.7';
+                    canvasContainer.style.pointerEvents = 'auto';
+                } else {
+                    canvasContainer.style.opacity = '0';
+                    canvasContainer.style.pointerEvents = 'none';
+                }
+            }
+        }
+
+        function startQuiz() {
+            state.currentStep = 0;
+            state.answers = {};
+            switchView('quiz');
+        }
+
+        function renderQuestion() {
+            const q = questions[state.currentStep];
+            const container = document.getElementById('question-container');
+            const progress = document.getElementById('progress-text');
+            const nextBtn = document.getElementById('next-btn-container');
+
+            nextBtn.classList.remove('opacity-100');
+            nextBtn.classList.add('opacity-0', 'pointer-events-none');
+
+            progress.innerText = `0${state.currentStep + 1} / 0${questions.length}`;
+
+            let html = `
+                <div class="fade-in">
+                    <p class="text-[#C48A7E] text-xs font-bold tracking-widest mb-4 uppercase">${q.category}</p>
+                    <h3 class="text-3xl serif mb-8">${q.question}</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            `;
+
+            q.options.forEach((opt, idx) => {
+                html += `
+                    <div onclick="selectOption('${opt.value}', this)" 
+                        class="option-card cursor-pointer bg-white p-6 rounded-sm border border-gray-100 relative overflow-hidden group">
+                        <div class="absolute top-0 left-0 w-1 h-full bg-gray-100 group-hover:bg-[#C48A7E] transition-colors duration-300"></div>
+                        <h4 class="font-serif text-xl mb-2 text-gray-800">${opt.label}</h4>
+                        <p class="text-xs text-gray-500 font-light leading-relaxed">${opt.desc}</p>
+                    </div>
+                `;
+            });
+
+            html += `</div></div>`;
+            container.innerHTML = html;
+        }
+
+        function selectOption(value, cardElement) {
+            const qId = questions[state.currentStep].id;
+            state.answers[qId] = value;
+
+            document.querySelectorAll('.option-card').forEach(c => {
+                c.classList.remove('selected', 'ring-1', 'ring-[#C48A7E]');
+                c.querySelector('.absolute').classList.remove('bg-[#C48A7E]');
+                c.querySelector('.absolute').classList.add('bg-gray-100');
+            });
+            
+            cardElement.classList.add('selected', 'ring-1', 'ring-[#C48A7E]');
+            cardElement.querySelector('.absolute').classList.remove('bg-gray-100');
+            cardElement.querySelector('.absolute').classList.add('bg-[#C48A7E]');
+
+            const nextBtn = document.getElementById('next-btn-container');
+            nextBtn.classList.remove('opacity-0', 'pointer-events-none');
+            nextBtn.classList.add('opacity-100');
+        }
+
+        function nextQuestion() {
+            if (state.currentStep < questions.length - 1) {
+                const container = document.getElementById('question-container');
+                container.firstElementChild.style.opacity = '0';
+                container.firstElementChild.style.transform = 'translateY(-10px)';
+                container.firstElementChild.style.transition = 'all 0.3s ease';
+                
+                setTimeout(() => {
+                    state.currentStep++;
+                    renderQuestion();
+                }, 300);
+            } else {
+                calculateResults();
+            }
+        }
+
+        async function calculateResults() {
+            switchView('loading');
+            
+            const messages = [
+                "Connecting to Sephora API...",
+                "Authenticating...",
+                "Analyzing inventory for matches...",
+                "Filtering by ingredient profile...",
+                "Retrieving product metadata...",
+                "Finalizing curation..."
+            ];
+            
+            let i = 0;
+            const textEl = document.getElementById('loading-text');
+            
+            // Visual loader interval
+            const interval = setInterval(() => {
+                if(i < messages.length) {
+                    textEl.innerText = messages[i];
+                    i++;
+                }
+            }, 800);
+
+            // HERE WE CALL GEMINI TO "FETCH" REAL PRODUCTS
+            const { skin, hair, body } = state.answers;
+            
+            // Prompt to simulate API response
+            const prompt = `
+                Act as a Sephora API endpoint. 
+                I need 3 real, popular products available at Sephora for a user with:
+                - Skin Type: ${skin}
+                - Hair Concern: ${hair}
+                - Body Goal: ${body}
+
+                Return a valid JSON object with exactly these keys: "skin", "hair", "body".
+                Each key should contain an object with:
+                - "brand": String (Real brand name like Tatcha, Olaplex, etc)
+                - "name": String (Real product name)
+                - "type": String (e.g. Moisturizer, Serum)
+                - "price": Number (Approximate price in USD)
+                - "description": String (Very brief, 1 sentence why it fits)
+
+                Do NOT use markdown code blocks. Just the raw JSON string.
+            `;
+
+            let fetchedData = null;
+
+            try {
+                const data = await callGeminiAPI(prompt);
+                if(data && data.candidates && data.candidates[0].content.parts[0].text) {
+                    let jsonStr = data.candidates[0].content.parts[0].text;
+                    // Clean potential markdown
+                    jsonStr = jsonStr.replace(/```json/g, '').replace(/```/g, '').trim();
+                    fetchedData = JSON.parse(jsonStr);
+                }
+            } catch(e) {
+                console.error("AI Fetch failed, using fallback", e);
+            }
+
+            // Save to state or use fallback
+            if (fetchedData && fetchedData.skin) {
+                state.fetchedProducts = fetchedData;
+            } else {
+                // If API fails, map fallback structure
+                state.fetchedProducts = {
+                    skin: fallbackProducts.skin[skin],
+                    hair: fallbackProducts.hair[hair],
+                    body: fallbackProducts.body[body]
+                };
+            }
+
+            // Wait a bit to ensure the loading animation feels substantial (simulating API latency)
+            setTimeout(() => {
+                clearInterval(interval);
+                renderResults();
+                switchView('results');
+            }, 4000);
+        }
+
+        function renderResults() {
+            const grid = document.getElementById('results-grid');
+            const { skin, hair, body } = state.fetchedProducts;
+            
+            const productsList = [
+                { ...skin, cat: "SKIN" },
+                { ...hair, cat: "HAIR" },
+                { ...body, cat: "BODY" }
+            ];
+            
+            let totalPrice = 0;
+            let html = '';
+
+            productsList.forEach((prod, idx) => {
+                totalPrice += prod.price || 0;
+                
+                // Generate a dynamic placeholder image with the brand name
+                const bgColors = ["F9ECE8", "E8F1F2", "F2F0EB"];
+                const bg = bgColors[idx % 3];
+                const text = encodeURIComponent(prod.brand);
+                const imgUrl = `https://placehold.co/400x500/${bg}/1A1A1A?text=${text}`;
+
+                html += `
+                    <div class="bg-white p-6 md:p-8 text-center slide-up rounded shadow-sm border border-gray-50 group hover:border-gray-200 transition duration-300" style="animation-delay: ${idx * 150}ms">
+                        <div class="w-full h-56 mb-6 flex items-center justify-center bg-stone-50 relative overflow-hidden rounded-sm">
+                            <img src="${imgUrl}" alt="${prod.name}" class="w-full h-full object-cover mix-blend-multiply opacity-90 group-hover:scale-105 transition duration-700 ease-out">
+                            <div class="absolute top-3 left-3 bg-black text-white text-[10px] px-2 py-1 font-bold tracking-widest">SEPHORA VERIFIED</div>
+                        </div>
+                        <p class="text-[10px] font-bold tracking-widest text-gray-400 mb-1 uppercase">${prod.cat} • ${prod.brand}</p>
+                        <h3 class="text-lg md:text-xl serif mb-2 text-gray-900">${prod.name}</h3>
+                        <p class="text-xs font-bold text-[#C48A7E] mb-3">$${prod.price.toFixed(2)}</p>
+                        <p class="text-xs text-gray-500 leading-relaxed font-light">
+                            ${prod.description || "A top-rated formula chosen specifically for your profile."}
+                        </p>
+                        <button class="mt-4 w-full py-2 border border-gray-200 text-[10px] tracking-widest hover:bg-black hover:text-white transition uppercase">
+                            View Details
+                        </button>
+                    </div>
+                `;
+            });
+
+            grid.innerHTML = html;
+            document.getElementById('total-value').innerText = `Total Regimen Value: $${totalPrice.toFixed(2)}`;
+        }
+
+        async function generateRitual() {
+            const btn = document.getElementById('btn-generate-ritual');
+            const loader = document.getElementById('ritual-loader');
+            const contentDiv = document.getElementById('ritual-content');
+            
+            btn.disabled = true;
+            loader.classList.remove('hidden');
+            
+            const { skin, hair, body } = state.fetchedProducts;
+            const { lifestyle } = state.answers;
+
+            const prompt = `
+                You are a luxury aesthetician.
+                Create a personalized AM and PM daily ritual using ONLY these 3 products I just bought from Sephora:
+                1. ${skin.brand} ${skin.name}
+                2. ${hair.brand} ${hair.name}
+                3. ${body.brand} ${body.name}
+                
+                User Lifestyle: ${lifestyle}.
+                
+                Format as simple HTML (<ul>, <li>, <strong>). Keep it elegant and practical.
+            `;
+
+            try {
+                const data = await callGeminiAPI(prompt);
+                const text = data.candidates[0].content.parts[0].text;
+                
+                contentDiv.innerHTML = text;
+                contentDiv.classList.remove('hidden');
+                contentDiv.classList.add('fade-in');
+                btn.querySelector('span').innerText = "REGENERATE RITUAL";
+            } catch (e) {
+                contentDiv.innerHTML = "<p class='text-red-400 text-sm'>Our aesthetician is currently busy. Please try again.</p>";
+                contentDiv.classList.remove('hidden');
+            } finally {
+                btn.disabled = false;
+                loader.classList.add('hidden');
+            }
+        }
+
+        // Mobile Menu Toggle Logic
+        let mobileMenuOpen = false;
+        function toggleMobileMenu() {
+            mobileMenuOpen = !mobileMenuOpen;
+            const menu = document.getElementById('mobile-menu');
+            const b1 = document.getElementById('burger-1');
+            const b2 = document.getElementById('burger-2');
+            const nav = document.querySelector('nav');
+
+            if (mobileMenuOpen) {
+                menu.classList.remove('opacity-0', 'pointer-events-none');
+                menu.classList.add('opacity-100', 'pointer-events-auto');
+                b1.style.transform = 'rotate(45deg) translate(5px, 5px)';
+                b2.style.transform = 'rotate(-45deg) translate(0px, -1px)';
+                nav.classList.remove('bg-white/80', 'backdrop-blur-sm'); 
+            } else {
+                menu.classList.remove('opacity-100', 'pointer-events-auto');
+                menu.classList.add('opacity-0', 'pointer-events-none');
+                b1.style.transform = 'none';
+                b2.style.transform = 'none';
+                nav.classList.add('bg-white/80', 'backdrop-blur-sm');
+            }
+        }
+    </script>
+</body>
+</html>
